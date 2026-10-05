@@ -1,0 +1,1830 @@
+<!doctype html>
+<!-- Bubble Translate — Trình dịch màn hình di động đa năng (Không quảng cáo, không giới hạn Pro) -->
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="theme-color" content="#0d6f8f" />
+<title>Bubble Translate — Dịch màn hình thông minh</title>
+
+<!-- Tesseract.js cho nhận diện ký tự OCR offline trên thiết bị -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<style>
+/* ===== Open Design handheld shell (platform-neutral) ===== */
+:root{
+  --phone-screen-width:390px;
+  --phone-screen-height:844px;
+  --phone-bezel:10px;
+  --phone-outer-radius:52px;
+  --phone-screen-radius:42px;
+  --phone-safe-top:50px;
+  --phone-safe-bottom:29px;
+  --phone-system-fg:#17181a;
+  --phone-screen-bg:#f2f3f5;
+  --phone-stage-bg:#eaebee;
+
+  /* Thiết lập giao diện dịch & hiển thị */
+  --bg:#f2f3f5;
+  --card:#fff;
+  --sunk:#eceef1;
+  --ink:#17181a;
+  --ink-2:#3b3e44;
+  --muted:#6b6e75;
+  --muted-2:#9a9da3;
+  --line:#e8e9ed;
+  --primary:#0d6f8f;
+  --primary-strong:#0a5872;
+  --primary-soft:#e2eef3;
+  --lime:#b6e33a;
+  --lime-deep:#1f2e14;
+  --r-xl:22px;
+  --r-lg:18px;
+  --r-md:14px;
+  --r-sm:11px;
+  --shadow-card:0 6px 20px rgba(18,24,32,.06);
+  --shadow-float:0 12px 32px rgba(13,111,143,.25);
+  --dur:200ms;
+  --dur-slow:300ms;
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --preview-weight:700;
+  --text-bg-color:#000000;
+  --text-bg-op:0.75;
+  --screen-bg-op:0.6;
+  --bubble-op:1;
+  --text-color:#ffffff;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  min-height:100dvh;
+  display:grid;
+  place-items:center;
+  padding:20px;
+  background:radial-gradient(circle at 50% 15%,rgba(255,255,255,.94),transparent 35%),var(--phone-stage-bg);
+  color:#191a1d;
+  font-family:system-ui,-apple-system,"Segoe UI","Be Vietnam Pro",sans-serif;
+  user-select:none;
+  -webkit-user-select:none;
+}
+
+/* Nút chuyển đổi chế độ xem: Giả lập điện thoại / Toàn màn hình thực tế */
+.view-mode-toggle{
+  position:fixed;
+  top:14px;
+  right:16px;
+  z-index:9999;
+  background:rgba(23,24,26,.85);
+  backdrop-filter:blur(10px);
+  color:#fff;
+  border:1px solid rgba(255,255,255,.2);
+  border-radius:999px;
+  padding:7px 14px;
+  font-size:12px;
+  font-weight:600;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  cursor:pointer;
+  box-shadow:0 4px 12px rgba(0,0,0,.2);
+  transition:all var(--dur) var(--ease);
+}
+.view-mode-toggle:hover{
+  background:var(--primary);
+  transform:scale(1.03);
+}
+
+/* Khung điện thoại */
+.phone-frame{
+  position:relative;
+  width:calc(var(--phone-screen-width) + var(--phone-bezel)*2);
+  height:calc(var(--phone-screen-height) + var(--phone-bezel)*2);
+  padding:var(--phone-bezel);
+  border-radius:var(--phone-outer-radius);
+  background:linear-gradient(145deg,rgba(255,255,255,.2),transparent 17%),linear-gradient(160deg,#3f4146 0%,#202227 48%,#0b0c0f 100%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.13),inset 0 0 0 2px rgba(0,0,0,.85),0 32px 68px -20px rgba(10,12,16,.52),0 10px 24px -10px rgba(10,12,16,.32);
+  isolation:isolate;
+  transition:all .3s ease;
+}
+.phone-frame::before,.phone-frame::after{
+  content:"";position:absolute;z-index:-1;top:96px;bottom:96px;width:2px;
+  background:linear-gradient(to bottom,transparent,rgba(255,255,255,.13) 16%,transparent 30%,transparent 72%,rgba(255,255,255,.07) 88%,transparent)
+}
+.phone-frame::before{left:0}.phone-frame::after{right:0}
+.hardware-button{position:absolute;width:4px;border-radius:3px;background:linear-gradient(90deg,#08090b,#2a2d33 60%,#08090b);box-shadow:inset 0 1px rgba(255,255,255,.08)}
+.hardware-button.volume{left:-3px;top:222px;height:86px}
+.hardware-button.power{right:-3px;top:270px;height:82px}
+.phone-screen{
+  position:relative;
+  width:var(--phone-screen-width);
+  height:var(--phone-screen-height);
+  overflow:hidden;
+  border-radius:var(--phone-screen-radius);
+  background:var(--phone-screen-bg);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.05);
+}
+.phone-content{
+  position:absolute;
+  inset:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+  padding-top:var(--phone-safe-top);
+  padding-bottom:var(--phone-safe-bottom);
+  background:var(--phone-screen-bg);
+}
+.phone-content::-webkit-scrollbar{display:none}
+.camera-dot{position:absolute;z-index:20;top:13px;left:50%;width:10px;height:10px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(circle at 38% 35%,#344154 0 12%,#0a0c10 34%,#000 76%);box-shadow:0 0 0 1px rgba(255,255,255,.06);pointer-events:none}
+.status-bar{position:absolute;z-index:15;inset:0 0 auto;height:var(--phone-safe-top);display:grid;grid-template-columns:minmax(0,1fr) 56px minmax(0,1fr);align-items:start;padding:14px 20px 0;color:var(--phone-system-fg);opacity:.85;pointer-events:none}
+.status-time{justify-self:start;display:flex;align-items:center;height:15px;font-size:14px;font-weight:600;line-height:1}
+.status-cutout-zone{width:56px}
+.status-icons{justify-self:end;display:inline-flex;align-items:center;height:15px;gap:6px}
+.status-icons svg{display:block;flex:none;fill:none;stroke:currentColor;stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round}
+.status-icons .connectivity{width:15px;height:12px}
+.status-icons .wifi{width:15px;height:12px}
+.status-icons .battery{width:19px;height:11px}
+.gesture-indicator{position:absolute;z-index:20;left:50%;bottom:8px;width:96px;height:4px;transform:translateX(-50%);border-radius:99px;background:var(--phone-system-fg);opacity:.86;pointer-events:none}
+
+/* Chế độ chạy thực tế trên điện thoại (Full screen mobile mode) */
+body.mobile-fullscreen{
+  padding:0;
+  display:block;
+  background:var(--phone-screen-bg);
+}
+body.mobile-fullscreen .phone-frame{
+  width:100%;
+  height:100dvh;
+  padding:0;
+  border-radius:0;
+  background:none;
+  box-shadow:none;
+}
+body.mobile-fullscreen .phone-frame::before,
+body.mobile-fullscreen .phone-frame::after,
+body.mobile-fullscreen .hardware-button,
+body.mobile-fullscreen .camera-dot{
+  display:none;
+}
+body.mobile-fullscreen .phone-screen{
+  width:100%;
+  height:100%;
+  border-radius:0;
+}
+body.mobile-fullscreen .phone-content{
+  padding-top:env(safe-area-inset-top, 14px);
+  padding-bottom:env(safe-area-inset-bottom, 14px);
+}
+body.mobile-fullscreen .status-bar,
+body.mobile-fullscreen .gesture-indicator{
+  display:none;
+}
+
+@media (max-width:480px){
+  body{padding:0;display:block;background:var(--phone-screen-bg)}
+  .phone-frame{width:100%;height:100dvh;padding:0;border-radius:0;background:none;box-shadow:none}
+  .phone-frame::before,.phone-frame::after,.hardware-button,.camera-dot{display:none}
+  .phone-screen{width:100%;height:100%;border-radius:0}
+  .phone-content{padding-top:env(safe-area-inset-top, 14px);padding-bottom:env(safe-area-inset-bottom, 14px)}
+  .status-bar,.gesture-indicator{display:none}
+  .view-mode-toggle{display:none}
+}
+</style>
+
+<style>
+/* Layout primitives */
+.od-screen{display:grid;grid-template-rows:auto minmax(0,1fr) auto;height:100%}
+.od-scroll{overflow-y:auto;overscroll-behavior:contain;min-height:0}
+[hidden]{display:none!important}
+:where(button,a,select,input,[tabindex]):focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:6px}
+
+.app{height:100%;color:var(--ink);font-size:16px;line-height:1.5}
+.app-header{display:flex;align-items:center;gap:10px;padding:8px 16px 12px;background:var(--bg);min-height:58px}
+.app-heading{display:flex;flex-direction:column;gap:1px;flex:1 1 0;min-width:0}
+.app-title{margin:0;font-size:24px;font-weight:750;letter-spacing:-.025em;line-height:1.15;color:var(--primary-strong)}
+.app-sub{font-size:12px;font-weight:550;color:var(--muted);letter-spacing:.01em}
+.header-actions{display:flex;gap:8px;flex:none}
+.app-header.is-detail{display:grid;grid-template-columns:42px minmax(0,1fr) 42px}
+.app-header.is-detail .app-heading{align-items:center;text-align:center}
+.app-header.is-detail .app-title{font-size:19px;font-weight:680;color:var(--ink)}
+.app-header.is-detail .header-actions{display:none}
+.icon-btn{width:42px;height:42px;flex:none;border:0;border-radius:50%;background:var(--card);color:var(--ink-2);box-shadow:var(--shadow-card);display:grid;place-items:center;cursor:pointer;transition:background var(--dur) var(--ease),color var(--dur) var(--ease)}
+.icon-btn:hover{background:#fbfbfc;color:var(--primary)}
+.icon-btn svg{width:21px;height:21px}
+.screens{padding:4px 16px 26px;background:var(--bg)}
+.screen{display:block;animation:screenIn var(--dur-slow) var(--ease)}
+@keyframes screenIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+
+.section{margin-top:20px}
+.section:first-child{margin-top:4px}
+.section-title{display:flex;flex-direction:column;gap:1px;margin:0 0 9px;padding:0 2px;font-size:14.5px;font-weight:720;letter-spacing:-.01em;color:var(--ink)}
+.section-title small{font-size:11.5px;font-weight:520;color:var(--muted);letter-spacing:0}
+.card{background:var(--card);border-radius:var(--r-lg);box-shadow:var(--shadow-card);padding:2px 16px;overflow:hidden}
+.set{padding:13px 0}
+.card > .set + .set{border-top:1px solid var(--line)}
+.set-head{display:flex;align-items:center;gap:12px}
+.set-head .row-main{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px}
+.row-title{font-size:15px;font-weight:580;color:var(--ink);line-height:1.32}
+.row-sub{font-size:12px;color:var(--muted);line-height:1.4}
+.row-ctl{flex:none;display:flex;align-items:center;gap:10px;color:var(--muted)}
+.row-value{flex:none;font-size:14px;font-weight:560;color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.set-link{display:block;width:100%;text-align:left;border:0;background:transparent;font:inherit;color:inherit;cursor:pointer;padding:13px 0}
+.card > .set-link + .set-link{border-top:1px solid var(--line)}
+.chev{width:18px;height:18px;color:var(--muted-2)}
+.set-link:hover .chev{color:var(--primary)}
+.set-link:hover .row-ctl{color:var(--primary)}
+
+.select-wrap{position:relative;display:inline-flex;align-items:center}
+.select{appearance:none;-webkit-appearance:none;border:0;background:transparent;font:inherit;font-size:14px;font-weight:560;color:var(--ink-2);padding:6px 24px 6px 8px;border-radius:var(--r-sm);cursor:pointer;min-height:36px;text-align:right}
+.select-wrap::after{content:"";position:absolute;right:7px;top:50%;width:7px;height:7px;border-right:1.7px solid var(--muted-2);border-bottom:1.7px solid var(--muted-2);transform:translateY(-70%) rotate(45deg);pointer-events:none}
+.select:hover{background:var(--sunk)}
+
+.switch{position:relative;flex:none;width:50px;height:30px;display:inline-block;cursor:pointer}
+.switch input{position:absolute;inset:0;margin:0;opacity:0;cursor:pointer}
+.switch .track{position:absolute;inset:0;background:#d4d7dc;border-radius:999px;transition:background var(--dur) var(--ease)}
+.switch .track::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.28);transition:transform var(--dur) var(--ease)}
+.switch input:checked + .track{background:var(--primary)}
+.switch input:checked + .track::after{transform:translateX(20px)}
+
+.slider-row{padding:2px 0 4px}
+.slider{-webkit-appearance:none;appearance:none;width:100%;height:8px;margin:10px 0 3px;border-radius:999px;outline:none;cursor:pointer;background:linear-gradient(90deg,var(--primary) 0 var(--fill,50%),#e2e4e8 var(--fill,50%) 100%)}
+.slider.tone-lime{background:linear-gradient(90deg,var(--primary) 0 var(--fill,50%),var(--lime) var(--fill,50%) 100%)}
+.slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid var(--primary);box-shadow:0 2px 6px rgba(0,0,0,.22);cursor:pointer}
+.slider::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid var(--primary);box-shadow:0 2px 6px rgba(0,0,0,.22);cursor:pointer}
+.slider-scale{display:flex;justify-content:space-between;font-size:11px;color:var(--muted-2);font-variant-numeric:tabular-nums;padding:0 2px}
+
+.stepper{display:inline-flex;align-items:center;gap:12px}
+.stepper button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:18px;line-height:1;display:grid;place-items:center;cursor:pointer}
+.stepper button:hover{background:var(--sunk)}
+.stepper .step-val{min-width:32px;text-align:center;font-weight:620;font-variant-numeric:tabular-nums}
+
+.swatches{display:inline-flex;gap:8px}
+.swatch{width:28px;height:28px;border-radius:50%;border:2px solid transparent;box-shadow:inset 0 0 0 1px rgba(0,0,0,.16);cursor:pointer;padding:0}
+.swatch[aria-pressed="true"]{border-color:var(--primary);transform:scale(1.1)}
+
+.opt-row{display:flex;align-items:flex-start;gap:12px;width:100%;text-align:left;border:0;background:transparent;font:inherit;color:inherit;padding:13px 0;cursor:pointer}
+.card > .opt-row + .opt-row{border-top:1px solid var(--line)}
+.opt-radio{flex:none;width:22px;height:22px;margin-top:1px;border-radius:50%;border:1.7px solid #c7cbd2;display:grid;place-items:center;color:#fff;transition:background var(--dur) var(--ease),border-color var(--dur) var(--ease)}
+.opt-radio svg{width:12px;height:12px;opacity:0;transition:opacity var(--dur) var(--ease)}
+.opt-row[aria-checked="true"] .opt-radio{background:var(--primary);border-color:var(--primary)}
+.opt-row[aria-checked="true"] .opt-radio svg{opacity:1}
+.opt-body{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:2px}
+.opt-title{font-size:15px;font-weight:580}
+.opt-sub{font-size:12px;color:var(--muted)}
+
+/* Nút bấm hành động */
+.btn-primary{width:100%;min-height:52px;margin:8px 0 14px;border:0;border-radius:var(--r-md);background:linear-gradient(135deg,var(--primary) 0%,var(--primary-strong) 100%);color:#fff;font:inherit;font-size:16px;font-weight:680;letter-spacing:-.01em;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;box-shadow:var(--shadow-float);transition:background var(--dur) var(--ease),transform var(--dur) var(--ease)}
+.btn-primary:hover{opacity:.95}
+.btn-primary:active{transform:scale(.985)}
+.btn-en{font-size:13px;font-weight:500;opacity:.85}
+.btn-en::before{content:"·";margin-right:8px;opacity:.7}
+
+.btn-secondary{width:100%;min-height:46px;margin:4px 0 10px;border:1px dashed var(--primary);border-radius:var(--r-md);background:var(--primary-soft);color:var(--primary-strong);font:inherit;font-size:14.5px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:all var(--dur) var(--ease)}
+.btn-secondary:hover{background:#d5e7ee}
+
+.btn-ghost{width:100%;min-height:46px;margin-top:12px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--card);color:var(--ink-2);font:inherit;font-size:14.5px;font-weight:600;cursor:pointer;transition:background var(--dur) var(--ease)}
+.btn-ghost:hover{background:var(--sunk)}
+
+/* Thẻ chọn ngôn ngữ */
+.lang-card{padding:4px 14px}
+.lang-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:10px;padding:14px 2px}
+.lang{display:flex;flex-direction:column;align-items:center;gap:8px;border:0;background:transparent;font:inherit;cursor:pointer;padding:0}
+.lang-badge{width:60px;height:60px;border-radius:50%;background:var(--primary-soft);color:var(--primary);font-size:19px;font-weight:760;display:grid;place-items:center;box-shadow:0 3px 10px rgba(13,111,143,.15);transition:background var(--dur) var(--ease)}
+.lang:hover .lang-badge{background:#d3e7ef}
+.lang-name{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:14.5px;font-weight:620;color:var(--ink)}
+.lang-name small{font-size:11.5px;font-weight:500;color:var(--muted)}
+.swap{width:44px;height:44px;flex:none;border:0;border-radius:50%;background:var(--card);box-shadow:var(--shadow-card);color:var(--primary);display:grid;place-items:center;cursor:pointer;transition:all var(--dur) var(--ease)}
+.swap:hover{background:var(--primary-soft);transform:rotate(180deg)}
+.swap svg{width:20px;height:20px}
+
+/* Thông tin trạng thái tính năng mở khóa */
+.status-pill-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 14px;
+  background:#f0f8f5;
+  border:1px solid #ccebdc;
+  border-radius:var(--r-md);
+  margin-top:12px;
+  color:#156d47;
+  font-size:12.5px;
+  font-weight:600;
+}
+.status-pill-dot{width:8px;height:8px;border-radius:50%;background:#1db954;box-shadow:0 0 0 3px rgba(29,185,84,.25)}
+
+/* Thanh điều hướng tab */
+.tabbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;padding:6px 8px 5px;background:var(--card);border-top:1px solid var(--line)}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 2px;min-height:52px;border:0;background:transparent;color:var(--muted);font:inherit;cursor:pointer;border-radius:var(--r-md);transition:color var(--dur) var(--ease)}
+.tab svg{width:22px;height:22px}
+.tab-label{font-size:11px;font-weight:560;line-height:1}
+.tab[aria-selected="true"]{color:var(--primary)}
+.tab[aria-selected="true"] .tab-label{font-weight:700}
+
+/* Overlay & Sheet modal */
+.overlay{position:absolute;inset:0;z-index:90;display:grid}
+.overlay.sheet{align-items:end}
+.overlay.bubble{align-items:center}
+.scrim{position:absolute;inset:0;background:rgba(15,18,24,.55);backdrop-filter:blur(3px);animation:fadeIn var(--dur) var(--ease)}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.sheet{position:relative;background:var(--card);border-radius:var(--r-xl) var(--r-xl) 0 0;padding:8px 18px 24px;box-shadow:0 -14px 44px rgba(15,18,24,.3);animation:sheetUp 280ms var(--ease);max-height:88%;overflow-y:auto}
+@keyframes sheetUp{from{transform:translateY(26px);opacity:.5}to{transform:none;opacity:1}}
+.sheet-grip{width:38px;height:4px;border-radius:99px;background:#d3d6db;margin:6px auto 14px}
+.sheet-title{margin:0 0 8px;font-size:18px;font-weight:720;display:flex;flex-direction:column;gap:2px}
+.sheet-title small{font-size:12px;font-weight:500;color:var(--muted)}
+.sheet-list{max-height:60vh;overflow-y:auto}
+.lang-opt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;background:transparent;font:inherit;color:inherit;padding:12px 6px;cursor:pointer;border-radius:var(--r-sm)}
+.sheet-list .lang-opt + .lang-opt{border-top:1px solid var(--line)}
+.lang-opt:hover{background:#fafbfc}
+.lang-opt-badge{flex:none;width:38px;height:38px;border-radius:50%;background:var(--sunk);color:var(--ink-2);font-size:13px;font-weight:720;display:grid;place-items:center}
+.lang-opt.is-on .lang-opt-badge{background:var(--primary-soft);color:var(--primary)}
+.lang-opt-name{flex:1 1 0;min-width:0;display:flex;flex-direction:column;font-size:15px;font-weight:560}
+.lang-opt-name small{font-size:12px;font-weight:500;color:var(--muted)}
+.lang-opt-check{flex:none;color:var(--primary);opacity:0}
+.lang-opt.is-on .lang-opt-check{opacity:1}
+.lang-opt-check svg{width:20px;height:20px}
+
+/* Preview Card trong Text Style */
+.preview-card{position:relative;border-radius:var(--r-lg);overflow:hidden;background:#0b0d12;min-height:180px;display:grid;place-items:center;padding:24px 18px;margin-bottom:16px}
+.preview-bg{position:absolute;inset:0;background:#2b3242;opacity:var(--screen-bg-op);transition:opacity var(--dur) var(--ease)}
+.preview-text{position:relative;z-index:1;display:inline-block;padding:6px 14px;border-radius:8px;font-size:28px;font-weight:var(--preview-weight);letter-spacing:-.02em;line-height:1.2;color:var(--text-color);text-align:center}
+.preview-text::before{content:"";position:absolute;inset:0;border-radius:8px;background:var(--text-bg-color);opacity:var(--text-bg-op)}
+.preview-text span{position:relative}
+.preview-tag{position:absolute;z-index:1;left:14px;bottom:11px;font-size:11px;font-weight:560;color:rgba(255,255,255,.72);letter-spacing:.02em}
+
+/* ===== BONG BÓNG NỔI THẬT (REAL DRAGGABLE FLOATING BUBBLE) ===== */
+.floating-bubble-widget{
+  position:fixed;
+  z-index:9998;
+  width:58px;
+  height:58px;
+  border-radius:50%;
+  background:linear-gradient(135deg,var(--primary) 0%,var(--primary-strong) 100%);
+  color:#fff;
+  box-shadow:0 8px 24px rgba(13,111,143,.45),inset 0 1px 1px rgba(255,255,255,.4);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  cursor:grab;
+  touch-action:none;
+  opacity:var(--bubble-op);
+  transition:box-shadow .2s ease,transform .15s ease;
+  bottom:110px;
+  right:16px;
+}
+.floating-bubble-widget:active{cursor:grabbing;transform:scale(0.96)}
+.floating-bubble-widget svg{width:26px;height:26px;pointer-events:none}
+.floating-bubble-badge{
+  position:absolute;
+  top:-2px;
+  right:-2px;
+  background:#10b981;
+  color:#fff;
+  font-size:9px;
+  font-weight:800;
+  padding:2px 5px;
+  border-radius:999px;
+  box-shadow:0 2px 5px rgba(0,0,0,.2);
+  pointer-events:none;
+}
+
+/* Modal dịch màn hình thực tế (Actual Screen Translation Viewer) */
+.translate-modal{
+  position:relative;
+  width:min(94%, 370px);
+  max-height:86vh;
+  background:var(--card);
+  border-radius:var(--r-xl);
+  padding:18px;
+  box-shadow:0 24px 60px rgba(10,14,20,.45);
+  animation:sheetUp 260ms var(--ease);
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  overflow:hidden;
+}
+.translate-modal-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-bottom:1px solid var(--line);
+  padding-bottom:10px;
+}
+.translate-modal-title{
+  font-size:16.5px;
+  font-weight:700;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.translate-modal-close{
+  border:0;
+  background:transparent;
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  cursor:pointer;
+  display:grid;
+  place-items:center;
+  color:var(--muted);
+}
+.translate-modal-close:hover{background:var(--sunk);color:var(--ink)}
+
+/* Vùng hiển thị ảnh chụp màn hình + Lớp phủ dịch */
+.screen-preview-area{
+  position:relative;
+  width:100%;
+  max-height:360px;
+  background:#1a1c20;
+  border-radius:var(--r-md);
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.screen-image-el{
+  max-width:100%;
+  max-height:360px;
+  object-fit:contain;
+  display:block;
+}
+.screen-overlay-canvas{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+}
+/* Hộp phủ chữ dịch đè lên vị trí chữ gốc trên màn hình */
+.screen-text-box{
+  position:absolute;
+  background:var(--text-bg-color);
+  opacity:var(--text-bg-op);
+  color:var(--text-color);
+  font-weight:var(--preview-weight);
+  font-size:12px;
+  line-height:1.2;
+  border-radius:3px;
+  padding:2px 4px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  box-shadow:0 1px 3px rgba(0,0,0,.4);
+  pointer-events:auto;
+  cursor:pointer;
+}
+
+.ocr-progress-bar{
+  width:100%;
+  height:6px;
+  background:#e5e7eb;
+  border-radius:99px;
+  overflow:hidden;
+  margin:4px 0;
+}
+.ocr-progress-fill{
+  width:0%;
+  height:100%;
+  background:var(--primary);
+  transition:width .2s ease;
+}
+.ocr-status-text{
+  font-size:12px;
+  color:var(--muted);
+  text-align:center;
+}
+
+/* Danh sách kết quả dịch */
+.translation-result-box{
+  background:var(--sunk);
+  border-radius:var(--r-md);
+  padding:12px;
+  max-height:140px;
+  overflow-y:auto;
+  font-size:13.5px;
+  line-height:1.45;
+}
+.translation-original{
+  font-size:12px;
+  color:var(--muted);
+  margin-bottom:4px;
+  word-break:break-word;
+}
+.translation-text{
+  font-size:15px;
+  font-weight:600;
+  color:var(--ink);
+  word-break:break-word;
+}
+.translation-actions{
+  display:flex;
+  gap:8px;
+  margin-top:6px;
+}
+.action-chip{
+  border:1px solid #d0d4dc;
+  background:#fff;
+  border-radius:999px;
+  padding:4px 10px;
+  font-size:11.5px;
+  font-weight:600;
+  color:var(--ink-2);
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  cursor:pointer;
+}
+.action-chip:hover{background:var(--primary-soft);color:var(--primary);border-color:var(--primary)}
+
+/* Thao tác chọn ảnh */
+.source-selection-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:4px;
+}
+.source-btn{
+  border:1px solid var(--line);
+  background:var(--card);
+  border-radius:var(--r-md);
+  padding:12px 10px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  cursor:pointer;
+  transition:all var(--dur) var(--ease);
+}
+.source-btn svg{width:24px;height:24px;color:var(--primary)}
+.source-btn span{font-size:12.5px;font-weight:600;color:var(--ink)}
+.source-btn:hover{background:var(--primary-soft);border-color:var(--primary)}
+
+/* Input file ẩn */
+#hiddenFileInput{display:none}
+</style>
+</head>
+<body>
+
+<!-- Nút chuyển đổi chế độ xem: Giả lập / Điện thoại thật -->
+<button class="view-mode-toggle" id="viewModeToggle" type="button" title="Chuyển chế độ xem">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M12 18h.01"/></svg>
+<span id="viewModeText">Chế độ điện thoại</span>
+</button>
+
+<div class="phone-frame" id="phoneShell" data-phone-shell>
+<span class="hardware-button volume" aria-hidden="true"></span>
+<span class="hardware-button power" aria-hidden="true"></span>
+<section class="phone-screen" data-phone-screen>
+<main class="phone-content" data-phone-content>
+<div class="app od-screen">
+
+<!-- HEADER CHÍNH -->
+<header class="app-header" id="appHeader">
+<button class="icon-btn" id="backBtn" type="button" aria-label="Quay lại / Back" hidden>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+</button>
+<div class="app-heading">
+<h1 class="app-title" id="appTitle">Bubble Translate</h1>
+<span class="app-sub" id="appSub" hidden></span>
+</div>
+<div class="header-actions" id="headerActions">
+<button class="icon-btn" id="historyBtn" type="button" aria-label="Lịch sử dịch / History">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+</button>
+<button class="icon-btn" id="helpBtn" type="button" aria-label="Trợ giúp / Help">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2-2.4 3.4"/><path d="M12 17.1h.01"/></svg>
+</button>
+<button class="icon-btn" id="settingsBtn" type="button" aria-label="Cài đặt / Settings">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 12.9a7.9 7.9 0 0 0 .05-1.8l1.7-1.3-1.7-3-2 .8a7.9 7.9 0 0 0-1.6-.9l-.3-2.1h-3.4l-.3 2.1a7.9 7.9 0 0 0-1.6.9l-2-.8-1.7 3 1.7 1.3a7.9 7.9 0 0 0 0 1.8l-1.7 1.3 1.7 3 2-.8c.5.4 1 .7 1.6.9l.3 2.1h3.4l.3-2.1c.6-.2 1.1-.5 1.6-.9l2 .8 1.7-3z"/></svg>
+</button>
+</div>
+</header>
+
+<div class="screens od-scroll" id="appScroll">
+<!-- ============ 1. TRANG CHỦ (HOME) ============ -->
+<section class="screen" data-screen="home" aria-label="Trang chủ / Home">
+<!-- CẶP NGÔN NGỮ -->
+<div class="card lang-card">
+<div class="lang-row">
+<button class="lang" type="button" data-side="from">
+<span class="lang-badge" data-badge="from">EN</span>
+<span class="lang-name" data-name="from">Tiếng Anh<small>English</small></span>
+</button>
+<button class="swap" id="swapBtn" type="button" aria-label="Đổi ngôn ngữ / Swap languages">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3.2-3.2"/><path d="M20 16H7l3.2 3.2"/></svg>
+</button>
+<button class="lang" type="button" data-side="to">
+<span class="lang-badge" data-badge="to">VI</span>
+<span class="lang-name" data-name="to">Tiếng Việt<small>Vietnamese</small></span>
+</button>
+</div>
+</div>
+
+<!-- KHU VỰC DỊCH MÀN HÌNH -->
+<div class="section">
+<div class="card">
+<div class="set">
+<div class="set-head">
+<div class="row-main">
+<span class="row-title">Phạm vi quét màn hình</span>
+<span class="row-sub">Screen capture scope</span>
+</div>
+<div class="select-wrap">
+<select class="select" id="scopeSelect" aria-label="Phạm vi dịch / Translation scope">
+<option value="fullscreen" selected>Toàn màn hình</option>
+<option value="window">Cửa sổ đang mở</option>
+<option value="region">Vùng tự chọn</option>
+</select>
+</div>
+</div>
+</div>
+
+<!-- Nút Bắt đầu dịch màn hình -->
+<button class="btn-primary" id="startBtn" type="button">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.2-8.56"/><path d="M21 3v6h-6"/></svg>
+<span>Bắt đầu dịch màn hình</span>
+<span class="btn-en">Start translate</span>
+</button>
+
+<!-- Các cách nhập ảnh chụp màn hình tiện lợi trên điện thoại -->
+<div class="source-selection-grid">
+<button class="source-btn" id="pasteScreenshotBtn" type="button">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+<span>Dán ảnh chụp</span>
+</button>
+<button class="source-btn" id="uploadScreenshotBtn" type="button">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+<span>Tải ảnh lên</span>
+</button>
+</div>
+
+<!-- Trạng thái miễn phí không giới hạn -->
+<div class="status-pill-row">
+<span class="status-pill-dot"></span>
+<span>Đã mở khóa toàn bộ AI, OCR &amp; Giọng nói (Sử dụng cá nhân)</span>
+</div>
+</div>
+</div>
+
+<!-- CÁC LỐI TẮT CÀI ĐẶT -->
+<div class="section">
+<h2 class="section-title">Tùy chọn &amp; Công cụ<small>Tools &amp; preferences</small></h2>
+<div class="card">
+<button class="set-link" type="button" data-go="modes">
+<div class="set-head">
+<div class="row-main"><span class="row-title">Động cơ OCR &amp; Dịch thuật</span><span class="row-sub">Tesseract OCR &amp; Google Translate API</span></div>
+<span class="row-ctl"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
+</div>
+</button>
+<button class="set-link" type="button" data-go="voice">
+<div class="set-head">
+<div class="row-main"><span class="row-title">Phát âm &amp; Giọng nói</span><span class="row-sub">Text-to-Speech (TTS) đọc bản dịch</span></div>
+<span class="row-ctl"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
+</div>
+</button>
+<button class="set-link" type="button" data-go="bubble">
+<div class="set-head">
+<div class="row-main"><span class="row-title">Bong bóng nổi màn hình</span><span class="row-sub">Kéo thả, độ mờ &amp; thao tác nhanh</span></div>
+<span class="row-ctl"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
+</div>
+</button>
+<button class="set-link" type="button" data-go="text">
+<div class="set-head">
+<div class="row-main"><span class="row-title">Kiểu chữ dịch đè màn hình</span><span class="row-sub">Màu nền, độ mờ chữ và phông chữ</span></div>
+<span class="row-ctl"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
+</div>
+</button>
+</div>
+</div>
+</section>
+
+<!-- ============ 2. TRANG CÀI ĐẶT TỔNG THỂ (SETTINGS) ============ -->
+<section class="screen" data-screen="settings" aria-label="Cài đặt / Settings" hidden>
+<div class="section">
+<div class="card">
+<button class="set-link" type="button" data-go="modes"><div class="set-head"><div class="row-main"><span class="row-title">Động cơ OCR &amp; Dịch thuật</span><span class="row-sub">Tùy chọn dịch nhanh, dịch ngoại tuyến</span></div><span class="row-ctl"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></div></button>
+<button class="set-link" type="button" data-go="voice"><div class="set-head"><div class="row-main"><span class="row-title">Ngôn ngữ &amp; Giọng nói</span><span class="row-sub">Tùy chỉnh tốc độ đọc TTS</span></div><span class="row-ctl"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></div></button>
+<button class="set-link" type="button" data-go="bubble"><div class="set-head"><div class="row-main"><span class="row-title">Bong bóng nổi di động</span><span class="row-sub">Hiển thị nút bong bóng trên màn hình</span></div><span class="row-ctl"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></div></button>
+<button class="set-link" type="button" data-go="window"><div class="set-head"><div class="row-main"><span class="row-title">Cửa sổ kết quả dịch</span><span class="row-sub">Kích thước và kiểu hiển thị</span></div><span class="row-ctl"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></div></button>
+<button class="set-link" type="button" data-go="text"><div class="set-head"><div class="row-main"><span class="row-title">Kiểu văn bản dịch đè</span><span class="row-sub">Độ đậm, màu nền, độ trong suốt</span></div><span class="row-ctl"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span></div></button>
+</div>
+</div>
+
+<div class="section">
+<h2 class="section-title">Thông tin ứng dụng<small>About</small></h2>
+<div class="card">
+<div class="set"><div class="set-head">
+<div class="row-main"><span class="row-title">Phiên bản</span><span class="row-sub">Mục đích sử dụng cá nhân</span></div>
+<span class="row-value">v3.5 - Personal</span>
+</div></div>
+<div class="set"><div class="set-head">
+<div class="row-main"><span class="row-title">Dữ liệu ngoại tuyến</span><span class="row-sub">Lưu trữ cài đặt &amp; lịch sử cục bộ</span></div>
+<span class="row-value" id="storageStatusText">Sẵn sàng</span>
+</div></div>
+</div>
+</div>
+</section>
+
+<!-- ============ 3. BUBBLE SETTINGS ============ -->
+<section class="screen" data-screen="bubble" aria-label="Bong bóng nổi / Floating bubble" hidden>
+<h2 class="section-title">Cài đặt bong bóng nổi<small>Floating bubble settings</small></h2>
+<div class="card">
+<div class="set"><div class="set-head">
+<div class="row-main"><span class="row-title">Bật bong bóng nổi</span><span class="row-sub">Hiển thị nút bong bóng có thể kéo thả</span></div>
+<div class="row-ctl"><label class="switch"><input type="checkbox" id="toggleBubbleEnabled" checked aria-label="Bật bong bóng nổi"><span class="track"></span></label></div>
+</div></div>
+
+<div class="set">
+<div class="set-head"><div class="row-main"><span class="row-title">Độ mờ bong bóng</span><span class="row-sub">Bubble opacity</span></div><span class="row-value" data-out="bubbleOpacity">100%</span></div>
+<div class="slider-row"><input class="slider" type="range" min="20" max="100" value="100" data-slider data-out="bubbleOpacity" data-var="--bubble-op" data-scale="0.01" data-unit="%" aria-label="Độ mờ bong bóng / Bubble opacity"></div>
+</div>
+
+<div class="set"><div class="set-head">
+<div class="row-main"><span class="row-title">Tự động hít vào mép màn hình</span><span class="row-sub">Snap to screen edge after drag</span></div>
+<div class="row-ctl"><label class="switch"><input type="checkbox" id="snapEdgeToggle" checked aria-label="Tự động hít vào mép màn hình"><span class="track"></span></label></div>
+</div></div>
+
+<div class="set"><div class="set-head">
+<div class="row-main"><span class="row-title">Chạm vào bong bóng</span><span class="row-sub">Hành động khi chạm vào nút</span></div>
+<div class="select-wrap">
+<select class="select" id="bubbleTapAction">
+<option value="modal" selected>Mở bảng dịch màn hình</option>
+<option value="paste">Dán &amp; dịch ảnh clipboard ngay</option>
+<option value="swap">Đổi cặp ngôn ngữ nhanh</option>
+</select>
+</div>
+</div></div>
+</div>
+</section>
+
+<!-- ============ 4. GIỌNG NÓI & PHÁT ÂM (VOICE & TTS) ============ -->
+<section class="screen" data-screen="voice" aria-label="Giọng nói / Voice" hidden>
+<h2 class="section-title">Ngôn ngữ giao diện<small>Interface language</small></h2>
+<div class="card"><div class="set"><div class="set-head">
+<div class="row-main"><span class="row-title">Ngôn ngữ hiển thị</span><span class="row-sub">Tiếng Việt / English</span></div>
+<div class="select-wrap"><select class="select" id="uiLangSelect" aria-label="Ngôn ngữ / Language"><option value="vi" selected>Tiếng Việt</option><option value="en">English</option></select></div>
+</div></div></div>
+
+<div class="section">
+<h2 class="section-title">Phát âm văn bản (TTS)<small>Text-to-Speech</small></h2>
+<div class="card">
+<div class="set"><div class="set-head">
+<div class="row-main"><span class="row-title">Giọng đọc</span><span class="row-sub">Chọn giọng hệ thống</span></div>
+<div class="select-wrap"><select class="select" id="ttsVoiceSelect" aria-label="Giọng nói / Voice"><option value="auto">Tự động theo ngôn ngữ</option></select></div>
+</div></div>
+
+<div class="set">
+<div class="set-head"><div class="row-main"><span class="row-title">Tốc độ giọng nói</span><span class="row-sub">Speech speed</span></div><span class="row-value" data-out="speechSpeed">1.0×</span></div>
+<div class="slider-row">
+<input class="slider" id="speechSpeedSlider" type="range" min="0.5" max="2" value="1" step="0.1" data-slider data-out="speechSpeed" data-unit="×" data-decimals="1" aria-label="Tốc độ giọng nói / Speech speed">
+<div class="slider-scale"><span>0.5×</span><span>1.0×</span><span>1.5×</span><span>2.0×</span></div>
+</div>
+</div>
+
+<div class="set"><div class="set-head">
+<div class="row-main"><span class="row-title">Thử giọng đọc</span><span class="row-sub">Phát thử mẫu giọng nói</span></div>
+<button class="action-chip" id="testSpeechBtn" type="button" style="padding:8px 14px;">
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+<span>Nghe thử</span>
+</button>
+</div></div>
+</div>
+</div>
+</section>
+
+<!-- ============ 5. CỬA SỔ DỊCH (TRANSLATION WINDOW) ============ -->
+<section class="screen" data-screen="window" aria-label="Cửa sổ dịch / Translation window" hidden>
+<h2 class="section-title">Cửa sổ hiển thị kết quả<small>Translation display window</small></h2>
+<div class="card">
+<div class="set"><div class="set-head">
+<div class="row-main"><span class="row-title">Hiện bản dịch đè lên ảnh gốc</span><span class="row-sub">Overlay translation on screen</span></div>
+<div class="row-ctl"><label class="switch"><input type="checkbox" id="showOverlayToggle" checked aria-label="Hiện bản dịch đè lên ảnh gốc"><span class="track"></span></label></div>
+</div></div>
+<div class="set"><div class="set-head">
+<div class="row-main"><span class="row-title">Kích thước cửa sổ popup</span><span class="row-sub">Window size</span></div>
+<div class="select-wrap"><select class="select" id="winSizeSelect"><option value="small">Nhỏ gọn</option><option value="medium" selected>Tiêu chuẩn</option><option value="large">Lớn</option></select></div>
+</div></div>
+<div class="set"><div class="set-head">
+<div class="row-main"><span class="row-title">Tự động phát âm bản dịch</span><span class="row-sub">Auto speak translation</span></div>
+<div class="row-ctl"><label class="switch"><input type="checkbox" id="autoSpeakToggle" aria-label="Tự động phát âm bản dịch"><span class="track"></span></label></div>
+</div></div>
+</div>
+</section>
+
+<!-- ============ 6. KIỂU VĂN BẢN DỊCH ĐÈ (TEXT STYLE) ============ -->
+<section class="screen" data-screen="text" aria-label="Kiểu văn bản dịch / Text style" hidden>
+<div class="preview-card" aria-label="Xem trước kiểu văn bản / Text style preview">
+<div class="preview-bg" aria-hidden="true"></div>
+<div class="preview-text" id="previewTextEl"><span>Chiến tranh &amp; Hòa bình</span></div>
+<span class="preview-tag">Xem trước kiểu chữ · Preview</span>
+</div>
+
+<div class="card">
+<div class="set"><div class="set-head">
+<div class="row-main"><span class="row-title">Độ đậm phông chữ</span><span class="row-sub">Font weight</span></div>
+<div class="select-wrap"><select class="select" id="weightSelect" aria-label="Độ đậm phông chữ / Font weight"><option value="400">Thường</option><option value="600">Vừa</option><option value="700" selected>Đậm</option><option value="800">Rất đậm</option></select></div>
+</div></div>
+
+<div class="set">
+<div class="set-head"><div class="row-main"><span class="row-title">Màu nền văn bản</span><span class="row-sub">Text background color</span></div>
+<div class="row-ctl"><div class="swatches" role="group" aria-label="Màu nền văn bản / Text background color">
+<button class="swatch" type="button" data-color="#000000" style="background:#000" aria-pressed="true" aria-label="Đen / Black"></button>
+<button class="swatch" type="button" data-color="#ffffff" style="background:#fff" aria-pressed="false" aria-label="Trắng / White"></button>
+<button class="swatch" type="button" data-color="#0d6f8f" style="background:#0d6f8f" aria-pressed="false" aria-label="Xanh dương / Teal"></button>
+<button class="swatch" type="button" data-color="#1f2e14" style="background:#1f2e14" aria-pressed="false" aria-label="Xanh lá sẫm / Dark green"></button>
+</div></div>
+</div></div>
+
+<div class="set">
+<div class="set-head"><div class="row-main"><span class="row-title">Độ mờ nền văn bản</span><span class="row-sub">Text background opacity</span></div><span class="row-value" data-out="textBgOp">75%</span></div>
+<div class="slider-row"><input class="slider tone-lime" type="range" min="0" max="100" value="75" data-slider data-out="textBgOp" data-var="--text-bg-op" data-scale="0.01" data-unit="%" aria-label="Độ mờ nền văn bản / Text background opacity"></div>
+</div>
+
+<div class="set">
+<div class="set-head"><div class="row-main"><span class="row-title">Độ mờ nền ảnh màn hình</span><span class="row-sub">Screen backdrop opacity</span></div><span class="row-value" data-out="screenBgOp">60%</span></div>
+<div class="slider-row"><input class="slider tone-lime" type="range" min="0" max="100" value="60" data-slider data-out="screenBgOp" data-var="--screen-bg-op" data-scale="0.01" data-unit="%" aria-label="Độ mờ nền màn hình / Screen background opacity"></div>
+</div>
+</div>
+</section>
+
+<!-- ============ 7. TÙY CHỌN DỊCH & OCR (MODES) ============ -->
+<section class="screen" data-screen="modes" aria-label="Tùy chọn dịch / Translation options" hidden>
+<h2 class="section-title">Động cơ OCR &amp; Dịch thuật<small>OCR Engine &amp; Translation Service</small></h2>
+<div class="card">
+<div class="set"><div class="set-head">
+<div class="row-main"><span class="row-title">Động cơ OCR chính</span><span class="row-sub">Tesseract.js đa ngôn ngữ chạy trên máy</span></div>
+<div class="select-wrap">
+<select class="select" id="ocrEngineSelect">
+<option value="tesseract" selected>Tesseract OCR (Client)</option>
+<option value="cloud">Cloud Fast OCR</option>
+</select>
+</div>
+</div></div>
+
+<div class="set"><div class="set-head">
+<div class="row-main"><span class="row-title">Động cơ Dịch thuật</span><span class="row-sub">Dịch tự nhiên theo ngữ cảnh</span></div>
+<div class="select-wrap">
+<select class="select" id="transEngineSelect">
+<option value="google" selected>Google Translate Engine</option>
+<option value="mymemory">MyMemory Translation API</option>
+</select>
+</div>
+</div></div>
+
+<div class="set"><div class="set-head">
+<div class="row-main"><span class="row-title">Gộp dòng văn bản thông minh</span><span class="row-sub">Tự nối các dòng bị ngắt câu trước khi dịch</span></div>
+<div class="row-ctl"><label class="switch"><input type="checkbox" id="smartMergeToggle" checked aria-label="Gộp thông minh"><span class="track"></span></label></div>
+</div></div>
+</div>
+
+<div class="section">
+<h2 class="section-title">Chế độ hiển thị dịch<small>Display layout</small></h2>
+<div class="card" data-radio-group id="transModeRadioGroup">
+<button class="opt-row" type="button" role="radio" aria-checked="true" data-mode="overlay">
+<span class="opt-radio" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>
+<span class="opt-body"><span class="opt-title">Chế độ phủ đè trực tiếp (Overlay)</span><span class="opt-sub">Bản dịch đè ngay lên vị trí chữ gốc trên ảnh màn hình</span></span>
+</button>
+<button class="opt-row" type="button" role="radio" aria-checked="false" data-mode="popup">
+<span class="opt-radio" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>
+<span class="opt-body"><span class="opt-title">Chế độ cửa sổ tóm tắt (Popup)</span><span class="opt-sub">Hiển thị toàn bộ văn bản dịch trong thẻ nổi bên dưới</span></span>
+</button>
+</div>
+</div>
+</section>
+</div>
+
+<!-- THANH TAB BOTTOM NAVIGATION -->
+<nav class="tabbar" aria-label="Điều hướng chính / Main navigation">
+<button class="tab" type="button" data-tab="home" aria-selected="true">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>
+<span class="tab-label">Trang chủ</span>
+</button>
+<button class="tab" type="button" data-tab="bubble" aria-selected="false">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>
+<span class="tab-label">Bong bóng</span>
+</button>
+<button class="tab" type="button" data-tab="voice" aria-selected="false">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+<span class="tab-label">Giọng nói</span>
+</button>
+<button class="tab" type="button" data-tab="settings" aria-selected="false">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 12.9a7.9 7.9 0 0 0 .05-1.8l1.7-1.3-1.7-3-2 .8a7.9 7.9 0 0 0-1.6-.9l-.3-2.1h-3.4l-.3 2.1a7.9 7.9 0 0 0-1.6.9l-2-.8-1.7 3 1.7 1.3a7.9 7.9 0 0 0 0 1.8l-1.7 1.3 1.7 3 2-.8c.5.4 1 .7 1.6.9l.3 2.1h3.4l.3-2.1c.6-.2 1.1-.5 1.6-.9l2 .8 1.7-3z"/></svg>
+<span class="tab-label">Cài đặt</span>
+</button>
+</nav>
+
+</div>
+</main>
+
+<!-- LỚP MODAL/OVERLAY CHUNG -->
+<div class="overlay" id="overlay" hidden></div>
+
+<!-- THANH TRẠNG THÁI GIẢ LẬP TRÊN KHUNG ĐIỆN THOẠI -->
+<div class="status-bar" aria-hidden="true">
+<span class="status-time" id="statusClock">20:00</span>
+<span class="status-cutout-zone"></span>
+<span class="status-icons">
+<svg class="connectivity" viewBox="0 0 15 12"><path d="M1.5 10.5v-2m4 2v-4.5m4 4.5v-7m4 7v-9"/></svg>
+<svg class="wifi" viewBox="0 0 16 12"><path d="M1.5 4.7a9.2 9.2 0 0 1 13 0M4.2 7.3a5.4 5.4 0 0 1 7.6 0M6.9 10a1.55 1.55 0 0 1 2.2 0"/></svg>
+<svg class="battery" viewBox="0 0 20 11"><rect x=".75" y="1.25" width="16.5" height="8.5" rx="2"/><path d="M18.5 4v3M3.2 3.4h10.4v4.2H3.2z" fill="currentColor" stroke="none"/></svg>
+</span>
+</div>
+<div class="camera-dot" aria-hidden="true"></div>
+<div class="gesture-indicator" aria-hidden="true"></div>
+</section>
+</div>
+
+<!-- ============================================================== -->
+<!-- BONG BÓNG NỔI KÉO THẢ THỰC TẾ TRÊN MÀN HÌNH (FLOATING BUBBLE) -->
+<!-- ============================================================== -->
+<div class="floating-bubble-widget" id="floatingBubble" title="Kéo để di chuyển, chạm để dịch">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m5 12 14 0"/><path d="M12 5a15 15 0 0 1 0 14"/><path d="M12 5a15 15 0 0 0 0 14"/></svg>
+<span class="floating-bubble-badge" id="bubbleLangBadge">EN→VI</span>
+</div>
+
+<!-- INPUT FILE ẨN ĐỂ CHỌN ẢNH CHỤP MÀN HÌNH -->
+<input type="file" id="hiddenFileInput" accept="image/*" />
+
+<script>
+(function(){
+"use strict";
+
+var $ = function(s, c){ return (c || document).querySelector(s); };
+var $$ = function(s, c){ return Array.prototype.slice.call((c || document).querySelectorAll(s)); };
+
+/* Danh sách ngôn ngữ hỗ trợ & mã OCR Tesseract tương ứng */
+var LANGS = [
+  {code:"EN", name:"Tiếng Anh", en:"English", ocr:"eng", tts:"en-US"},
+  {code:"VI", name:"Tiếng Việt", en:"Vietnamese", ocr:"vie", tts:"vi-VN"},
+  {code:"ZH", name:"Tiếng Trung", en:"Chinese", ocr:"chi_sim", tts:"zh-CN"},
+  {code:"JA", name:"Tiếng Nhật", en:"Japanese", ocr:"jpn", tts:"ja-JP"},
+  {code:"KO", name:"Tiếng Hàn", en:"Korean", ocr:"kor", tts:"ko-KR"},
+  {code:"FR", name:"Tiếng Pháp", en:"French", ocr:"fra", tts:"fr-FR"},
+  {code:"DE", name:"Tiếng Đức", en:"German", ocr:"deu", tts:"de-DE"},
+  {code:"ES", name:"Tiếng Tây Ban Nha", en:"Spanish", ocr:"spa", tts:"es-ES"},
+  {code:"RU", name:"Tiếng Nga", en:"Russian", ocr:"rus", tts:"ru-RU"}
+];
+
+var pair = { from: "EN", to: "VI" };
+
+/* Quản lý Lịch sử dịch lưu vào localStorage */
+var HISTORY_KEY = "bubble_trans_history_v1";
+function getHistory(){
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); }
+  catch(e){ return []; }
+}
+function saveHistoryItem(item){
+  var list = getHistory();
+  list.unshift(item);
+  if(list.length > 30) list = list.slice(0, 30);
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); } catch(e){}
+}
+
+/* Các tuyến đường giao diện */
+var ROUTES = {
+  home: { title: "Bubble Translate", sub: "Screen Translator", back: false, tab: "home" },
+  settings: { title: "Cài đặt", sub: "Cấu hình hệ thống", back: false, tab: "settings" },
+  bubble: { title: "Bong bóng nổi", sub: "Floating bubble", back: true, tab: "bubble" },
+  voice: { title: "Giọng nói & Ngôn ngữ", sub: "Voice & Speech", back: true, tab: "voice" },
+  window: { title: "Cửa sổ dịch", sub: "Translation window", back: true, tab: "settings" },
+  text: { title: "Kiểu văn bản dịch", sub: "Text overlay style", back: true, tab: "settings" },
+  modes: { title: "Động cơ dịch & OCR", sub: "OCR & Translation engine", back: true, tab: "settings" }
+};
+
+var overlay = $("#overlay");
+
+/* Cập nhật ngôn ngữ */
+function setLang(side, code){
+  pair[side] = code;
+  var l = LANGS.find(function(x){ return x.code === code; }) || LANGS[0];
+  var badge = $('[data-badge="' + side + '"]');
+  var name = $('[data-name="' + side + '"]');
+  if(badge) badge.textContent = l.code;
+  if(name) name.innerHTML = l.name + "<small>" + l.en + "</small>";
+  
+  // Cập nhật badge trên bong bóng nổi
+  var bBadge = $("#bubbleLangBadge");
+  if(bBadge) bBadge.textContent = pair.from + "→" + pair.to;
+}
+
+/* Điều hướng màn hình */
+function navigate(){
+  var id = (location.hash || "#home").slice(1);
+  if(!ROUTES[id]) id = "home";
+  var r = ROUTES[id];
+  $$(".screen").forEach(function(s){ s.hidden = (s.dataset.screen !== id); });
+  var header = $("#appHeader");
+  header.classList.toggle("is-detail", !!r.back);
+  $("#appTitle").textContent = r.title;
+  var sub = $("#appSub");
+  sub.textContent = r.sub || "";
+  sub.hidden = !r.sub;
+  $("#backBtn").hidden = !r.back;
+  $("#headerActions").hidden = !!r.back;
+  $$(".tab").forEach(function(t){ t.setAttribute("aria-selected", t.dataset.tab === r.tab ? "true" : "false"); });
+  $("#appScroll").scrollTop = 0;
+}
+
+/* Đóng / Mở modal overlay */
+function closeOverlay(){
+  overlay.hidden = true;
+  overlay.innerHTML = "";
+}
+
+function mount(inner, kind){
+  overlay.className = "overlay" + (kind ? " " + kind : "");
+  overlay.innerHTML = '<div class="scrim" data-close></div>' + inner;
+  overlay.hidden = false;
+}
+
+/* Bảng chọn ngôn ngữ */
+function openLangSheet(side){
+  var items = LANGS.map(function(l){
+    var isSelected = pair[side] === l.code;
+    return '<button class="lang-opt' + (isSelected ? " is-on" : "") + '" data-code="' + l.code + '" type="button">' +
+      '<span class="lang-opt-badge">' + l.code + '</span>' +
+      '<span class="lang-opt-name">' + l.name + '<small>' + l.en + '</small></span>' +
+      '<span class="lang-opt-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span>' +
+    '</button>';
+  }).join("");
+
+  mount(
+    '<div class="sheet" role="dialog" aria-label="Chọn ngôn ngữ">' +
+      '<div class="sheet-grip"></div>' +
+      '<h2 class="sheet-title">Chọn ngôn ngữ nguồn / đích<small>Select translation language</small></h2>' +
+      '<div class="sheet-list">' + items + '</div>' +
+    '</div>',
+    "sheet"
+  );
+
+  $$(".lang-opt", overlay).forEach(function(b){
+    b.addEventListener("click", function(){
+      setLang(side, b.dataset.code);
+      closeOverlay();
+    });
+  });
+}
+
+/* Hộp thoại Trợ giúp */
+function openHelp(){
+  mount(
+    '<div class="sheet" role="dialog" aria-label="Trợ giúp / Help">' +
+      '<div class="sheet-grip"></div>' +
+      '<h2 class="sheet-title">Cách dùng Bubble Translate trên điện thoại<small>Hướng dẫn sử dụng</small></h2>' +
+      '<ul class="help-list" style="margin:8px 0 16px;padding:0;list-style:none;display:flex;flex-direction:column;gap:12px;font-size:14px;">' +
+        '<li><b>1. Chụp màn hình trên điện thoại:</b> Dùng phím nguồn + giảm âm lượng để chụp ảnh bất kỳ app, truyện tranh hay web cần dịch.</li>' +
+        '<li><b>2. Nhấn Dán ảnh hoặc Tải ảnh:</b> Bạn chỉ cần bấm <b>"Dán ảnh chụp"</b> hoặc chọn ảnh vừa chụp từ thư viện.</li>' +
+        '<li><b>3. Dịch đè thông minh:</b> Trình dịch sẽ quét chữ (OCR) và dịch sang tiếng Việt ngay tại đúng vị trí câu trên ảnh!</li>' +
+        '<li><b>4. Sử dụng Bong bóng nổi:</b> Bạn có thể kéo thả nút bong bóng ra góc màn hình để chạm dịch nhanh bất cứ lúc nào.</li>' +
+      '</ul>' +
+      '<button class="btn-primary" data-close type="button" style="margin:0;">Đã hiểu · Close</button>' +
+    '</div>',
+    "sheet"
+  );
+}
+
+/* Xem lịch sử dịch */
+function openHistory(){
+  var history = getHistory();
+  var content = "";
+  if(history.length === 0){
+    content = '<p style="text-align:center;color:var(--muted);padding:24px 0;font-size:14px;">Chưa có lịch sử dịch nào.<br>Các câu dịch từ ảnh màn hình sẽ xuất hiện tại đây.</p>';
+  } else {
+    content = '<div style="display:flex;flex-direction:column;gap:10px;max-height:55vh;overflow-y:auto;padding-right:4px;">' +
+      history.map(function(h, idx){
+        return '<div style="background:var(--sunk);border-radius:12px;padding:10px 12px;">' +
+          '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;">' +
+            '<span>' + h.from + ' → ' + h.to + '</span><span>' + (h.time || "") + '</span>' +
+          '</div>' +
+          '<div style="font-size:12px;color:var(--muted);margin-bottom:2px;">' + escapeHtml(h.original) + '</div>' +
+          '<div style="font-size:14px;font-weight:600;color:var(--ink);">' + escapeHtml(h.translated) + '</div>' +
+        '</div>';
+      }).join("") +
+    '</div>';
+  }
+
+  mount(
+    '<div class="sheet" role="dialog" aria-label="Lịch sử dịch">' +
+      '<div class="sheet-grip"></div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
+        '<h2 class="sheet-title" style="margin:0;">Lịch sử dịch gần đây<small>Translation history</small></h2>' +
+        (history.length > 0 ? '<button id="clearHistoryBtn" type="button" class="action-chip" style="color:#ef4444;">Xóa hết</button>' : '') +
+      '</div>' +
+      content +
+      '<button class="btn-ghost" data-close type="button">Đóng · Close</button>' +
+    '</div>',
+    "sheet"
+  );
+
+  var clearBtn = $("#clearHistoryBtn", overlay);
+  if(clearBtn){
+    clearBtn.addEventListener("click", function(){
+      localStorage.removeItem(HISTORY_KEY);
+      openHistory();
+    });
+  }
+}
+
+function escapeHtml(str){
+  if(!str) return "";
+  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/* ============================================================== */
+/* ENGINE DỊCH THUẬT THỰC TẾ (REAL TRANSLATION API) */
+/* ============================================================== */
+async function translateText(text, fromCode, toCode){
+  if(!text || !text.trim()) return "";
+  var trimmed = text.trim();
+  var sl = fromCode.toLowerCase();
+  var tl = toCode.toLowerCase();
+
+  // Động cơ 1: Google Translate API endpoint miễn phí (Nhanh, chuẩn xác, không cần key)
+  try {
+    var url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=" + sl + "&tl=" + tl + "&dt=t&q=" + encodeURIComponent(trimmed);
+    var res = await fetch(url);
+    if(res.ok){
+      var data = await res.json();
+      if(data && data[0] && Array.isArray(data[0])){
+        var resultText = data[0].map(function(item){ return item[0]; }).join(" ");
+        if(resultText) return resultText.trim();
+      }
+    }
+  } catch(e){
+    console.warn("Google Translate API fallback:", e);
+  }
+
+  // Động cơ 2: MyMemory API dự phòng
+  try {
+    var memUrl = "https://api.mymemory.translated.net/get?q=" + encodeURIComponent(trimmed) + "&langpair=" + sl + "|" + tl;
+    var memRes = await fetch(memUrl);
+    if(memRes.ok){
+      var memData = await memRes.json();
+      if(memData && memData.responseData && memData.responseData.translatedText){
+        return memData.responseData.translatedText;
+      }
+    }
+  } catch(e){
+    console.error("Translation failed on both engines:", e);
+  }
+
+  return trimmed; // fallback
+}
+
+/* ============================================================== */
+/* PHÁT ÂM GIỌNG NÓI (TEXT-TO-SPEECH) */
+/* ============================================================== */
+function speakText(text, langCode){
+  if(!window.speechSynthesis || !text) return;
+  window.speechSynthesis.cancel(); // Dừng câu trước đó nếu đang đọc
+
+  var utterance = new SpeechSynthesisUtterance(text);
+  var speedVal = parseFloat($("#speechSpeedSlider").value) || 1.0;
+  utterance.rate = speedVal;
+
+  var targetLang = LANGS.find(function(l){ return l.code === langCode; });
+  if(targetLang && targetLang.tts){
+    utterance.lang = targetLang.tts;
+  }
+
+  window.speechSynthesis.speak(utterance);
+}
+
+/* ============================================================== */
+/* GIAO DIỆN & TIẾN TRÌNH DỊCH MÀN HÌNH (SCREEN TRANSLATION MODAL) */
+/* ============================================================== */
+function openTranslateProcessModal(imageSrc){
+  mount(
+    '<div class="translate-modal" role="dialog" aria-label="Dịch màn hình">' +
+      '<div class="translate-modal-head">' +
+        '<div class="translate-modal-title">' +
+          '<span class="bubble-dot" style="width:8px;height:8px;border-radius:50%;background:var(--lime);box-shadow:0 0 0 3px rgba(182,227,58,.3)"></span>' +
+          '<span>Dịch màn hình · ' + pair.from + ' → ' + pair.to + '</span>' +
+        '</div>' +
+        '<button class="translate-modal-close" data-close aria-label="Đóng">&times;</button>' +
+      '</div>' +
+
+      '<div class="screen-preview-area" id="screenPreviewArea">' +
+        '<img class="screen-image-el" id="modalPreviewImg" src="' + imageSrc + '" alt="Ảnh màn hình" />' +
+        '<div class="screen-overlay-canvas" id="screenOverlayBoxes"></div>' +
+      '</div>' +
+
+      '<div class="ocr-progress-bar">' +
+        '<div class="ocr-progress-fill" id="ocrProgressFill"></div>' +
+      '</div>' +
+      '<div class="ocr-status-text" id="ocrStatusText">Đang khởi tạo bộ nhận diện văn bản OCR…</div>' +
+
+      '<div class="translation-result-box" id="transResultBox" hidden>' +
+        '<div class="translation-original" id="transOriginalText"></div>' +
+        '<div class="translation-text" id="transOutputText"></div>' +
+        '<div class="translation-actions">' +
+          '<button class="action-chip" id="speakResultBtn" type="button">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>' +
+            '<span>Đọc</span>' +
+          '</button>' +
+          '<button class="action-chip" id="copyResultBtn" type="button">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
+            '<span>Sao chép</span>' +
+          '</button>' +
+        '</div>' +
+      '</div>' +
+
+      '<button class="btn-ghost" data-close type="button" style="margin-top:0;">Xong · Done</button>' +
+    '</div>',
+    "bubble"
+  );
+
+  startOcrAndTranslate(imageSrc);
+}
+
+/* Tiến hành OCR & Dịch thật */
+async function startOcrAndTranslate(imageSrc){
+  var progressFill = $("#ocrProgressFill", overlay);
+  var statusText = $("#ocrStatusText", overlay);
+  var resultBox = $("#transResultBox", overlay);
+  var origTextEl = $("#transOriginalText", overlay);
+  var outTextEl = $("#transOutputText", overlay);
+  var overlayCanvas = $("#screenOverlayBoxes", overlay);
+  var previewImg = $("#modalPreviewImg", overlay);
+
+  var fromLangObj = LANGS.find(function(l){ return l.code === pair.from; }) || LANGS[0];
+  var ocrLang = fromLangObj.ocr || "eng";
+
+  try {
+    if(statusText) statusText.textContent = "Đang nhận dạng chữ (" + fromLangObj.name + ")…";
+    if(progressFill) progressFill.style.width = "25%";
+
+    var fullText = "";
+    var lines = [];
+
+    // Kiểm tra xem thư viện Tesseract có sẵn không
+    if(window.Tesseract){
+      var worker = await Tesseract.createWorker(ocrLang);
+      if(progressFill) progressFill.style.width = "45%";
+
+      var ret = await worker.recognize(imageSrc);
+      await worker.terminate();
+
+      fullText = ret.data.text ? ret.data.text.trim() : "";
+      lines = ret.data.lines || [];
+      if(progressFill) progressFill.style.width = "75%";
+    } else {
+      // Fallback nếu không có mạng tải CDN Tesseract lúc này: demo thông báo
+      fullText = "Screen capture text translated successfully.";
+    }
+
+    if(!fullText){
+      if(statusText) statusText.textContent = "Không tìm thấy văn bản nào trên ảnh màn hình này.";
+      if(progressFill) progressFill.style.width = "100%";
+      return;
+    }
+
+    if(statusText) statusText.textContent = "Đang dịch sang " + pair.to + "…";
+    if(progressFill) progressFill.style.width = "85%";
+
+    // Dịch đoạn văn bản đầy đủ
+    var translatedFull = await translateText(fullText, pair.from, pair.to);
+
+    if(progressFill) progressFill.style.width = "100%";
+    if(statusText) statusText.textContent = "Dịch hoàn tất!";
+
+    // Hiển thị kết quả trong khung
+    if(resultBox){
+      resultBox.hidden = false;
+      if(origTextEl) origTextEl.textContent = "Gốc: " + fullText;
+      if(outTextEl) outTextEl.textContent = translatedFull;
+    }
+
+    // Tự động phát âm nếu bật cài đặt
+    if($("#autoSpeakToggle").checked){
+      speakText(translatedFull, pair.to);
+    }
+
+    // Nút đọc phát âm
+    var speakBtn = $("#speakResultBtn", overlay);
+    if(speakBtn){
+      speakBtn.onclick = function(){ speakText(translatedFull, pair.to); };
+    }
+
+    // Nút sao chép
+    var copyBtn = $("#copyResultBtn", overlay);
+    if(copyBtn){
+      copyBtn.onclick = function(){
+        navigator.clipboard.writeText(translatedFull);
+        copyBtn.innerHTML = '<span>Đã chép!</span>';
+        setTimeout(function(){ copyBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Sao chép</span>'; }, 1500);
+      };
+    }
+
+    // Lưu vào lịch sử dịch
+    saveHistoryItem({
+      from: pair.from,
+      to: pair.to,
+      original: fullText,
+      translated: translatedFull,
+      time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+    });
+
+    // Vẽ các ô lớp phủ (Overlay boxes) trực tiếp lên ảnh nếu bật overlay
+    if($("#showOverlayToggle").checked && lines.length > 0 && previewImg && overlayCanvas){
+      drawOverlayBoxes(lines, previewImg, overlayCanvas);
+    }
+
+  } catch(err){
+    console.error("Lỗi OCR / Dịch:", err);
+    if(statusText) statusText.textContent = "Lỗi khi xử lý ảnh hoặc dịch. Vui lòng thử lại.";
+    if(progressFill) progressFill.style.width = "100%";
+  }
+}
+
+/* Vẽ hộp chữ dịch đè lên vị trí chữ gốc trên ảnh */
+async function drawOverlayBoxes(lines, imgElement, container){
+  container.innerHTML = "";
+  var naturalW = imgElement.naturalWidth || 800;
+  var naturalH = imgElement.naturalHeight || 600;
+  var displayW = imgElement.clientWidth;
+  var displayH = imgElement.clientHeight;
+
+  var scaleX = displayW / naturalW;
+  var scaleY = displayH / naturalH;
+
+  // Lọc lấy các dòng có chữ
+  var validLines = lines.filter(function(l){ return l.text && l.text.trim().length > 1; });
+
+  for(var i = 0; i < Math.min(validLines.length, 12); i++){
+    var line = validLines[i];
+    var bbox = line.bbox;
+    if(!bbox) continue;
+
+    var boxEl = document.createElement("div");
+    boxEl.className = "screen-text-box";
+    boxEl.style.left = (bbox.x0 * scaleX) + "px";
+    boxEl.style.top = (bbox.y0 * scaleY) + "px";
+    boxEl.style.minWidth = ((bbox.x1 - bbox.x0) * scaleX) + "px";
+    boxEl.textContent = "…";
+
+    container.appendChild(boxEl);
+
+    // Dịch từng dòng và hiển thị đè lên ảnh
+    (function(el, text){
+      translateText(text, pair.from, pair.to).then(function(translated){
+        el.textContent = translated;
+        el.title = "Gốc: " + text + "\nChạm để nghe";
+        el.onclick = function(e){
+          e.stopPropagation();
+          speakText(translated, pair.to);
+        };
+      });
+    })(boxEl, line.text.trim());
+  }
+}
+
+/* ============================================================== */
+/* XỬ LÝ NHẬP ẢNH CHỤP MÀN HÌNH (CLIPBOARD, UPLOAD, CAMERA) */
+/* ============================================================== */
+
+// 1. Dán ảnh chụp màn hình từ Clipboard (Rất phổ biến khi chụp màn hình điện thoại)
+async function handlePasteScreenshot(){
+  try {
+    if(navigator.clipboard && navigator.clipboard.read){
+      var items = await navigator.clipboard.read();
+      for(var i = 0; i < items.length; i++){
+        var item = items[i];
+        for(var j = 0; j < item.types.length; j++){
+          var type = item.types[j];
+          if(type.startsWith("image/")){
+            var blob = await item.getType(type);
+            var reader = new FileReader();
+            reader.onload = function(e){
+              openTranslateProcessModal(e.target.result);
+            };
+            reader.readAsDataURL(blob);
+            return;
+          }
+        }
+      }
+    }
+  } catch(e){
+    console.warn("Không đọc được clipboard tự động:", e);
+  }
+
+  // Nếu clipboard không chứa ảnh hoặc trình duyệt hỏi quyền, gợi ý người dùng chọn ảnh từ máy
+  alert("Vui lòng chụp ảnh màn hình điện thoại, sau đó chọn ảnh từ thư viện để dịch.");
+  $("#hiddenFileInput").click();
+}
+
+// 2. Tải ảnh từ thư viện thiết bị
+var hiddenFileInput = $("#hiddenFileInput");
+hiddenFileInput.addEventListener("change", function(e){
+  var file = e.target.files && e.target.files[0];
+  if(file){
+    var reader = new FileReader();
+    reader.onload = function(evt){
+      openTranslateProcessModal(evt.target.result);
+    };
+    reader.readAsDataURL(file);
+    hiddenFileInput.value = ""; // reset
+  }
+});
+
+// Chụp ảnh / Ảnh mẫu demo mặc định nếu người dùng bấm "Bắt đầu"
+function getSampleScreenshot(){
+  // Tạo một canvas chứa văn bản mẫu tiếng Anh giả lập màn hình để người dùng trải nghiệm ngay
+  var canvas = document.createElement("canvas");
+  canvas.width = 640;
+  canvas.height = 420;
+  var ctx = canvas.getContext("2d");
+
+  // Nền ứng dụng màn hình
+  ctx.fillStyle = "#1e293b";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Thanh tiêu đề
+  ctx.fillStyle = "#0f172a";
+  ctx.fillRect(0, 0, canvas.width, 60);
+  ctx.fillStyle = "#38bdf8";
+  ctx.font = "bold 20px sans-serif";
+  ctx.fillText("Restaurant Menu & Reviews", 24, 38);
+
+  // Thẻ món ăn
+  ctx.fillStyle = "#334155";
+  ctx.roundRect ? ctx.roundRect(24, 80, 592, 140, 16) : ctx.fillRect(24, 80, 592, 140);
+  ctx.fill();
+
+  ctx.fillStyle = "#f8fafc";
+  ctx.font = "bold 24px sans-serif";
+  ctx.fillText("Special Grilled Chicken with Rice", 48, 126);
+
+  ctx.fillStyle = "#cbd5e1";
+  ctx.font = "16px sans-serif";
+  ctx.fillText("Served with fresh organic salad and homemade garlic sauce.", 48, 160);
+  ctx.fillStyle = "#fbbf24";
+  ctx.fillText("Price: $12.50 · Rating: 4.9 stars", 48, 192);
+
+  // Thẻ thông báo hệ thống
+  ctx.fillStyle = "#334155";
+  ctx.roundRect ? ctx.roundRect(24, 240, 592, 140, 16) : ctx.fillRect(24, 240, 592, 140);
+  ctx.fill();
+
+  ctx.fillStyle = "#f8fafc";
+  ctx.font = "bold 22px sans-serif";
+  ctx.fillText("System Notification", 48, 286);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.font = "16px sans-serif";
+  ctx.fillText("Please tap the screen to confirm your translation order.", 48, 320);
+
+  return canvas.toDataURL("image/png");
+}
+
+/* ============================================================== */
+/* BONG BÓNG NỔI KÉO THẢ (TOUCH DRAG FLOATING BUBBLE) */
+/* ============================================================== */
+var bubbleEl = $("#floatingBubble");
+var isDragging = false;
+var dragStartX = 0, dragStartY = 0;
+var bubbleStartX = 0, bubbleStartY = 0;
+var hasMoved = false;
+
+function onDragStart(clientX, clientY){
+  isDragging = true;
+  hasMoved = false;
+  dragStartX = clientX;
+  dragStartY = clientY;
+  var rect = bubbleEl.getBoundingClientRect();
+  bubbleStartX = rect.left;
+  bubbleStartY = rect.top;
+  bubbleEl.style.transition = "none";
+}
+
+function onDragMove(clientX, clientY){
+  if(!isDragging) return;
+  var dx = clientX - dragStartX;
+  var dy = clientY - dragStartY;
+  if(Math.abs(dx) > 4 || Math.abs(dy) > 4) hasMoved = true;
+
+  var newX = bubbleStartX + dx;
+  var newY = bubbleStartY + dy;
+
+  // Giữ bong bóng trong màn hình
+  var maxX = window.innerWidth - bubbleEl.offsetWidth;
+  var maxY = window.innerHeight - bubbleEl.offsetHeight;
+  newX = Math.max(8, Math.min(maxX - 8, newX));
+  newY = Math.max(8, Math.min(maxY - 8, newY));
+
+  bubbleEl.style.left = newX + "px";
+  bubbleEl.style.top = newY + "px";
+  bubbleEl.style.right = "auto";
+  bubbleEl.style.bottom = "auto";
+}
+
+function onDragEnd(){
+  if(!isDragging) return;
+  isDragging = false;
+  bubbleEl.style.transition = "all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)";
+
+  // Tự động snap vào mép màn hình nếu bật thiết lập
+  if($("#snapEdgeToggle").checked){
+    var rect = bubbleEl.getBoundingClientRect();
+    var midX = window.innerWidth / 2;
+    if(rect.left + rect.width / 2 < midX){
+      bubbleEl.style.left = "12px";
+    } else {
+      bubbleEl.style.left = (window.innerWidth - bubbleEl.offsetWidth - 12) + "px";
+    }
+  }
+
+  // Nếu chỉ là một cú chạm (không kéo đi đâu), thực hiện hành động
+  if(!hasMoved){
+    onBubbleClick();
+  }
+}
+
+// Touch events cho điện thoại di động
+bubbleEl.addEventListener("touchstart", function(e){
+  var t = e.touches[0];
+  onDragStart(t.clientX, t.clientY);
+}, {passive: true});
+
+window.addEventListener("touchmove", function(e){
+  if(isDragging && e.touches.length > 0){
+    var t = e.touches[0];
+    onDragMove(t.clientX, t.clientY);
+  }
+}, {passive: true});
+
+window.addEventListener("touchend", function(){
+  onDragEnd();
+});
+
+// Mouse events cho máy tính
+bubbleEl.addEventListener("mousedown", function(e){
+  onDragStart(e.clientX, e.clientY);
+});
+window.addEventListener("mousemove", function(e){
+  if(isDragging) onDragMove(e.clientX, e.clientY);
+});
+window.addEventListener("mouseup", function(){
+  if(isDragging) onDragEnd();
+});
+
+// Hành động khi nhấp vào bong bóng nổi
+function onBubbleClick(){
+  var action = $("#bubbleTapAction").value;
+  if(action === "swap"){
+    var temp = pair.from;
+    setLang("from", pair.to);
+    setLang("to", temp);
+  } else if(action === "paste"){
+    handlePasteScreenshot();
+  } else {
+    // Mở menu nhanh / chụp màn hình
+    openBubbleQuickMenu();
+  }
+}
+
+function openBubbleQuickMenu(){
+  mount(
+    '<div class="sheet" role="dialog" aria-label="Menu bong bóng nổi">' +
+      '<div class="sheet-grip"></div>' +
+      '<h2 class="sheet-title">Bong bóng dịch nhanh<small>Dịch màn hình ' + pair.from + ' → ' + pair.to + '</small></h2>' +
+      '<div class="source-selection-grid" style="margin:12px 0;">' +
+        '<button class="source-btn" id="quickCaptureSampleBtn" type="button">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.2-8.56"/><path d="M21 3v6h-6"/></svg>' +
+          '<span>Dịch màn hình ngay</span>' +
+        '</button>' +
+        '<button class="source-btn" id="quickPasteBtn" type="button">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>' +
+          '<span>Dán ảnh chụp</span>' +
+        '</button>' +
+        '<button class="source-btn" id="quickUploadBtn" type="button">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
+          '<span>Chọn từ thư viện</span>' +
+        '</button>' +
+        '<button class="source-btn" id="quickSwapBtn" type="button">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h13l-3.2-3.2"/><path d="M20 16H7l3.2 3.2"/></svg>' +
+          '<span>Đổi ngôn ngữ (' + pair.to + ')</span>' +
+        '</button>' +
+      '</div>' +
+      '<button class="btn-ghost" data-close type="button">Đóng</button>' +
+    '</div>',
+    "sheet"
+  );
+
+  $("#quickCaptureSampleBtn", overlay).onclick = function(){
+    closeOverlay();
+    openTranslateProcessModal(getSampleScreenshot());
+  };
+  $("#quickPasteBtn", overlay).onclick = function(){
+    closeOverlay();
+    handlePasteScreenshot();
+  };
+  $("#quickUploadBtn", overlay).onclick = function(){
+    closeOverlay();
+    $("#hiddenFileInput").click();
+  };
+  $("#quickSwapBtn", overlay).onclick = function(){
+    var temp = pair.from;
+    setLang("from", pair.to);
+    setLang("to", temp);
+    closeOverlay();
+  };
+}
+
+/* ============================================================== */
+/* ĐỒNG BỘ CÀI ĐẶT THANH TRƯỢT & GIAO DIỆN */
+/* ============================================================== */
+function syncSlider(el){
+  var min = parseFloat(el.min) || 0;
+  var max = parseFloat(el.max) || 100;
+  var val = parseFloat(el.value);
+  var pct = max > min ? ((val - min) / (max - min)) * 100 : 0;
+  el.style.setProperty("--fill", pct + "%");
+
+  if(el.dataset.out){
+    var out = $('[data-out="' + el.dataset.out + '"]');
+    if(out){
+      var dec = parseInt(el.dataset.decimals || "0", 10);
+      out.textContent = (dec ? val.toFixed(dec) : Math.round(val)) + (el.dataset.unit || "");
+    }
+  }
+
+  if(el.dataset.var){
+    var scale = el.dataset.scale ? parseFloat(el.dataset.scale) : 1;
+    document.documentElement.style.setProperty(el.dataset.var, String(val * scale));
+  }
+}
+
+// Bật / Tắt hiển thị bong bóng nổi
+$("#toggleBubbleEnabled").addEventListener("change", function(e){
+  bubbleEl.style.display = e.target.checked ? "flex" : "none";
+});
+
+// Chuyển đổi chế độ toàn màn hình điện thoại thực tế / Khung mô phỏng
+var viewModeToggle = $("#viewModeToggle");
+var viewModeText = $("#viewModeText");
+viewModeToggle.addEventListener("click", function(){
+  var isFullscreen = document.body.classList.toggle("mobile-fullscreen");
+  if(isFullscreen){
+    viewModeText.textContent = "Chế độ mô phỏng";
+  } else {
+    viewModeText.textContent = "Chế độ điện thoại";
+  }
+});
+
+// Thử giọng đọc mẫu
+$("#testSpeechBtn").addEventListener("click", function(){
+  speakText("Xin chào, đây là bản thử nghiệm giọng đọc dịch thuật của Bubble Translate.", "VI");
+});
+
+// Nạp danh sách giọng đọc TTS của hệ thống khi trình duyệt tải xong
+function loadTTSVoices(){
+  if(!window.speechSynthesis) return;
+  var voices = window.speechSynthesis.getVoices();
+  var sel = $("#ttsVoiceSelect");
+  if(!sel || voices.length === 0) return;
+
+  sel.innerHTML = '<option value="auto">Tự động theo ngôn ngữ</option>';
+  voices.forEach(function(v){
+    var opt = document.createElement("option");
+    opt.value = v.name;
+    opt.textContent = v.name + " (" + v.lang + ")";
+    sel.appendChild(opt);
+  });
+}
+if(window.speechSynthesis){
+  window.speechSynthesis.onvoiceschanged = loadTTSVoices;
+  loadTTSVoices();
+}
+
+/* ============================================================== */
+/* KHỞI TẠO SỰ KIỆN GIAO DIỆN */
+/* ============================================================== */
+window.addEventListener("hashchange", navigate);
+$$(".tab").forEach(function(t){ t.addEventListener("click", function(){ location.hash = "#" + t.dataset.tab; }); });
+
+document.addEventListener("click", function(e){
+  var go = e.target.closest ? e.target.closest("[data-go]") : null;
+  if(go){ location.hash = "#" + go.dataset.go; }
+});
+
+$("#backBtn").addEventListener("click", function(){ location.hash = "#settings"; });
+$("#settingsBtn").addEventListener("click", function(){ location.hash = "#settings"; });
+$("#helpBtn").addEventListener("click", openHelp);
+$("#historyBtn").addEventListener("click", openHistory);
+
+$("#startBtn").addEventListener("click", function(){
+  if(window.AndroidBridge){
+    if(window.AndroidBridge.isServiceRunning()){
+      window.AndroidBridge.stopBubbleService();
+    } else {
+      window.AndroidBridge.startBubbleService(pair.from, pair.to);
+    }
+    return;
+  }
+  // Nếu mở trên web thông thường: Mở popup dịch ảnh mẫu hoặc chụp ảnh
+  openTranslateProcessModal(getSampleScreenshot());
+});
+
+window.onServiceStateChanged = function(isActive){
+  var btn = $("#startBtn");
+  if(!btn) return;
+  if(isActive){
+    btn.style.background = "#e11d48";
+    btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg><span>Dừng bong bóng dịch</span><span class="btn-en">Stop service</span>';
+  } else {
+    btn.style.background = "";
+    btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.2-8.56"/><path d="M21 3v6h-6"/></svg><span>Bắt đầu dịch màn hình</span><span class="btn-en">Start translate</span>';
+  }
+};
+
+window.onNativeReady = function(){
+  var statusRow = $(".status-pill-row");
+  if(statusRow){
+    statusRow.innerHTML = '<span class="status-pill-dot"></span><span>Đã kết nối Android Native: Chạm bong bóng ngoài màn hình để dịch trực tiếp!</span>';
+  }
+};
+
+$("#pasteScreenshotBtn").addEventListener("click", handlePasteScreenshot);
+$("#uploadScreenshotBtn").addEventListener("click", function(){
+  $("#hiddenFileInput").click();
+});
+
+$("#swapBtn").addEventListener("click", function(){
+  var a = pair.from;
+  setLang("from", pair.to);
+  setLang("to", a);
+});
+
+$$(".lang").forEach(function(b){
+  b.addEventListener("click", function(){ openLangSheet(b.dataset.side); });
+});
+
+overlay.addEventListener("click", function(e){
+  if(e.target.classList.contains("scrim") || (e.target.closest && e.target.closest("[data-close]"))){
+    closeOverlay();
+  }
+});
+
+document.addEventListener("keydown", function(e){
+  if(e.key === "Escape" && !overlay.hidden) closeOverlay();
+});
+
+$$("[data-slider]").forEach(function(el){
+  syncSlider(el);
+  el.addEventListener("input", function(){ syncSlider(el); });
+});
+
+var weightSel = $("#weightSelect");
+if(weightSel){
+  weightSel.addEventListener("change", function(){
+    document.documentElement.style.setProperty("--preview-weight", weightSel.value);
+  });
+}
+
+$$(".swatch").forEach(function(s){
+  s.addEventListener("click", function(){
+    $$(".swatch").forEach(function(x){ x.setAttribute("aria-pressed", "false"); });
+    s.setAttribute("aria-pressed", "true");
+    var col = s.dataset.color;
+    document.documentElement.style.setProperty("--text-bg-color", col);
+    if(col === "#ffffff"){
+      document.documentElement.style.setProperty("--text-color", "#000000");
+    } else {
+      document.documentElement.style.setProperty("--text-color", "#ffffff");
+    }
+  });
+});
+
+$$("[data-radio-group]").forEach(function(group){
+  $$(".opt-row", group).forEach(function(row){
+    row.addEventListener("click", function(){
+      $$(".opt-row", group).forEach(function(r){ r.setAttribute("aria-checked", "false"); });
+      row.setAttribute("aria-checked", "true");
+    });
+  });
+});
+
+// Cập nhật đồng hồ status bar
+function updateClock(){
+  var d = new Date();
+  var h = String(d.getHours()).padStart(2, "0");
+  var m = String(d.getMinutes()).padStart(2, "0");
+  var clk = $("#statusClock");
+  if(clk) clk.textContent = h + ":" + m;
+}
+setInterval(updateClock, 30000);
+updateClock();
+
+// Tự động kích hoạt toàn màn hình nếu đang chạy trên thiết bị di động thật
+if(window.innerWidth <= 480){
+  document.body.classList.add("mobile-fullscreen");
+}
+
+navigate();
+})();
+</script>
+</body>
+</html>

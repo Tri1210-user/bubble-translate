@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Bubble Translate</string>
+    <string name="service_running">Dịch vụ dịch màn hình đang hoạt động</string>
+    <string name="tap_bubble_to_translate">Chạm vào bong bóng nổi để dịch màn hình ngay</string>
+    <string name="permission_overlay_required">Vui lòng cấp quyền \'Xuất hiện trên cùng\' để hiển thị bong bóng dịch!</string>
+    <string name="permission_media_required">Vui lòng cho phép quyền Chụp màn hình để dịch trực tiếp!</string>
+    <string name="translating">Đang dịch…</string>
+    <string name="close">Đóng</string>
+</resources>
